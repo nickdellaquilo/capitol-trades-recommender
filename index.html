@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Congressional Trading Analysis Bot</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            color: #2d3748;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            text-align: center;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #718096;
+            margin-bottom: 30px;
+        }
+
+        .controls {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .control-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            color: #4a5568;
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e2e8f0;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            border-radius: 5px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            margin-right: 10px;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-label {
+            color: #718096;
+            font-size: 0.9em;
+            margin-bottom: 5px;
+        }
+
+        .stat-value {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .recommendations {
+            background: #f7fafc;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+        }
+
+        .recommendation-card {
+            background: white;
+            padding: 15px;
+            margin-bottom: 15px;
+            border-radius: 8px;
+            border-left: 4px solid #48bb78;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateX(-20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateX(0);
+            }
+        }
+
+        .recommendation-card.sell {
+            border-left-color: #f56565;
+        }
+
+        .recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+
+        .ticker {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #2d3748;
+        }
+
+        .action {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            font-weight: 600;
+            color: white;
+        }
+
+        .action.buy {
+            background: #48bb78;
+        }
+
+        .action.sell {
+            background: #f56565;
+        }
+
+        .recommendation-details {
+            color: #4a5568;
+            font-size: 0.95em;
+            line-height: 1.6;
+        }
+
+        .data-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        .data-table th {
+            background: #4a5568;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+
+        .data-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .data-table tr:hover {
+            background: #f7fafc;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #718096;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .error {
+            background: #fed7d7;
+            color: #742a2a;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        .success {
+            background: #c6f6d5;
+            color: #22543d;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏛️ Congressional Trading Analysis Bot</h1>
+        <p class="subtitle">Analyze congressional trading patterns and generate investment recommendations</p>
+
+        <div class="controls">
+            <h2>Configuration</h2>
+            <div class="control-group">
+                <div>
+                    <label for="timeframe">Timeframe</label>
+                    <select id="timeframe">
+                        <option value="7">Last 7 days</option>
+                        <option value="30" selected>Last 30 days</option>
+                        <option value="90">Last 90 days</option>
+                        <option value="365">Last year</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="minVolume">Min Transaction Volume ($)</label>
+                    <input type="number" id="minVolume" value="50000" min="1000" step="1000">
+                </div>
+                <div>
+                    <label for="confidence">Confidence Threshold (%)</label>
+                    <input type="number" id="confidence" value="70" min="50" max="100" step="5">
+                </div>
+                <div>
+                    <label for="sector">Sector Filter</label>
+                    <select id="sector">
+                        <option value="all">All Sectors</option>
+                        <option value="tech">Technology</option>
+                        <option value="finance">Finance</option>
+                        <option value="healthcare">Healthcare</option>
+                        <option value="energy">Energy</option>
+                        <option value="consumer">Consumer</option>
+                    </select>
+                </div>
+            </div>
+            <div>
+                <button onclick="analyzeData()">🔍 Analyze Trades</button>
+                <button onclick="generateRecommendations()">🤖 Generate Recommendations</button>
+                <button onclick="exportData()">📥 Export Data</button>
+            </div>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Trades Analyzed</div>
+                <div class="stat-value" id="totalTrades">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Unique Politicians</div>
+                <div class="stat-value" id="uniquePoliticians">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Total Volume</div>
+                <div class="stat-value" id="totalVolume">$0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Top Performing Stock</div>
+                <div class="stat-value" id="topStock">-</div>
+            </div>
+        </div>
+
+        <div class="recommendations" id="recommendationsSection" style="display: none;">
+            <h2>📊 Trading Recommendations</h2>
+            <div id="recommendationsList"></div>
+        </div>
+
+        <div id="dataSection" style="display: none;">
+            <h2>Recent Congressional Trades</h2>
+            <table class="data-table" id="tradesTable">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Politician</th>
+                        <th>Stock</th>
+                        <th>Type</th>
+                        <th>Amount</th>
+                        <th>Confidence Score</th>
+                    </tr>
+                </thead>
+                <tbody id="tradesBody"></tbody>
+            </table>
+        </div>
+
+        <div id="loadingSection" class="loading" style="display: none;">
+            <div class="spinner"></div>
+            <p>Analyzing congressional trading data...</p>
+        </div>
+
+        <div id="messageSection"></div>
+    </div>
+
+    <script>
+        // Simulated data store
+        let tradingData = [];
+        let recommendations = [];
+
+        // Congressional trading patterns (simulated)
+        const sampleTrades = [
+            { date: '2024-01-15', politician: 'Sen. Johnson', stock: 'NVDA', type: 'BUY', amount: 250000, sector: 'tech' },
+            { date: '2024-01-16', politician: 'Rep. Smith', stock: 'AAPL', type: 'BUY', amount: 150000, sector: 'tech' },
+            { date: '2024-01-17', politician: 'Sen. Williams', stock: 'MSFT', type: 'BUY', amount: 200000, sector: 'tech' },
+            { date: '2024-01-18', politician: 'Rep. Davis', stock: 'JPM', type: 'SELL', amount: 100000, sector: 'finance' },
+            { date: '2024-01-19', politician: 'Sen. Brown', stock: 'TSLA', type: 'BUY', amount: 300000, sector: 'tech' },
+            { date: '2024-01-20', politician: 'Rep. Miller', stock: 'UNH', type: 'BUY', amount: 175000, sector: 'healthcare' },
+            { date: '2024-01-21', politician: 'Sen. Taylor', stock: 'XOM', type: 'SELL', amount: 125000, sector: 'energy' },
+            { date: '2024-01-22', politician: 'Rep. Anderson', stock: 'GOOGL', type: 'BUY', amount: 225000, sector: 'tech' },
+            { date: '2024-01-23', politician: 'Sen. Thomas', stock: 'BRK.B', type: 'BUY', amount: 400000, sector: 'finance' },
+            { date: '2024-01-24', politician: 'Rep. Jackson', stock: 'V', type: 'BUY', amount: 180000, sector: 'finance' }
+        ];
+
+        function showMessage(message, type = 'success') {
+            const messageSection = document.getElementById('messageSection');
+            messageSection.innerHTML = `<div class="${type}">${message}</div>`;
+            setTimeout(() => {
+                messageSection.innerHTML = '';
+            }, 5000);
+        }
+
+        function analyzeData() {
+            const loadingSection = document.getElementById('loadingSection');
+            loadingSection.style.display = 'block';
+
+            // Simulate API call delay
+            setTimeout(() => {
+                const timeframe = parseInt(document.getElementById('timeframe').value);
+                const minVolume = parseInt(document.getElementById('minVolume').value);
+                const sector = document.getElementById('sector').value;
+
+                // Filter and process data
+                tradingData = sampleTrades.filter(trade => {
+                    const volumeMatch = trade.amount >= minVolume;
+                    const sectorMatch = sector === 'all' || trade.sector === sector;
+                    return volumeMatch && sectorMatch;
+                });
+
+                // Calculate confidence scores
+                tradingData = tradingData.map(trade => ({
+                    ...trade,
+                    confidence: calculateConfidence(trade)
+                }));
+
+                updateStatistics();
+                displayTrades();
+                loadingSection.style.display = 'none';
+                showMessage('Analysis complete! Found ' + tradingData.length + ' relevant trades.');
+            }, 2000);
+        }
+
+        function calculateConfidence(trade) {
+            // Simulated confidence calculation based on various factors
+            let confidence = 50;
+            
+            // Volume factor
+            if (trade.amount > 200000) confidence += 20;
+            else if (trade.amount > 100000) confidence += 10;
+            
+            // Sector momentum
+            if (trade.sector === 'tech') confidence += 15;
+            if (trade.sector === 'healthcare') confidence += 10;
+            
+            // Buy vs Sell
+            if (trade.type === 'BUY') confidence += 10;
+            
+            // Random market factor
+            confidence += Math.floor(Math.random() * 15);
+            
+            return Math.min(confidence, 95);
+        }
+
+        function updateStatistics() {
+            document.getElementById('totalTrades').textContent = tradingData.length;
+            
+            const uniquePols = new Set(tradingData.map(t => t.politician)).size;
+            document.getElementById('uniquePoliticians').textContent = uniquePols;
+            
+            const totalVol = tradingData.reduce((sum, t) => sum + t.amount, 0);
+            document.getElementById('totalVolume').textContent = '$' + totalVol.toLocaleString();
+            
+            const stockCounts = {};
+            tradingData.forEach(t => {
+                if (t.type === 'BUY') {
+                    stockCounts[t.stock] = (stockCounts[t.stock] || 0) + 1;
+                }
+            });
+            
+            const topStock = Object.keys(stockCounts).reduce((a, b) => 
+                stockCounts[a] > stockCounts[b] ? a : b, '');
+            document.getElementById('topStock').textContent = topStock || '-';
+        }
+
+        function displayTrades() {
+            const tbody = document.getElementById('tradesBody');
+            const dataSection = document.getElementById('dataSection');
+            
+            tbody.innerHTML = '';
+            tradingData.forEach(trade => {
+                const row = tbody.insertRow();
+                row.innerHTML = `
+                    <td>${trade.date}</td>
+                    <td>${trade.politician}</td>
+                    <td><strong>${trade.stock}</strong></td>
+                    <td><span class="action ${trade.type.toLowerCase()}">${trade.type}</span></td>
+                    <td>$${trade.amount.toLocaleString()}</td>
+                    <td>${trade.confidence}%</td>
+                `;
+            });
+            
+            dataSection.style.display = 'block';
+        }
+
+        function generateRecommendations() {
+            if (tradingData.length === 0) {
+                showMessage('Please analyze data first!', 'error');
+                return;
+            }
+
+            const confidenceThreshold = parseInt(document.getElementById('confidence').value);
+            
+            // Aggregate trades by stock
+            const stockAnalysis = {};
+            tradingData.forEach(trade => {
+                if (!stockAnalysis[trade.stock]) {
+                    stockAnalysis[trade.stock] = {
+                        buyCount: 0,
+                        sellCount: 0,
+                        totalVolume: 0,
+                        avgConfidence: 0,
+                        politicians: []
+                    };
+                }
+                
+                if (trade.type === 'BUY') {
+                    stockAnalysis[trade.stock].buyCount++;
+                } else {
+                    stockAnalysis[trade.stock].sellCount++;
+                }
+                
+                stockAnalysis[trade.stock].totalVolume += trade.amount;
+                stockAnalysis[trade.stock].avgConfidence += trade.confidence;
+                stockAnalysis[trade.stock].politicians.push(trade.politician);
+            });
+
+            // Calculate average confidence and generate recommendations
+            recommendations = [];
+            for (const [stock, analysis] of Object.entries(stockAnalysis)) {
+                analysis.avgConfidence = Math.round(analysis.avgConfidence / (analysis.buyCount + analysis.sellCount));
+                
+                if (analysis.avgConfidence >= confidenceThreshold) {
+                    const netBuys = analysis.buyCount - analysis.sellCount;
+                    if (netBuys > 0) {
+                        recommendations.push({
+                            stock,
+                            action: 'BUY',
+                            confidence: analysis.avgConfidence,
+                            reason: `${analysis.buyCount} congressional buys vs ${analysis.sellCount} sells`,
+                            volume: analysis.totalVolume,
+                            politicians: [...new Set(analysis.politicians)]
+                        });
+                    } else if (netBuys < 0) {
+                        recommendations.push({
+                            stock,
+                            action: 'SELL',
+                            confidence: analysis.avgConfidence,
+                            reason: `${analysis.sellCount} congressional sells vs ${analysis.buyCount} buys`,
+                            volume: analysis.totalVolume,
+                            politicians: [...new Set(analysis.politicians)]
+                        });
+                    }
+                }
+            }
+
+            // Sort by confidence
+            recommendations.sort((a, b) => b.confidence - a.confidence);
+            
+            displayRecommendations();
+        }
+
+        function displayRecommendations() {
+            const recommendationsSection = document.getElementById('recommendationsSection');
+            const recommendationsList = document.getElementById('recommendationsList');
+            
+            if (recommendations.length === 0) {
+                recommendationsList.innerHTML = '<p>No recommendations meet the confidence threshold.</p>';
+            } else {
+                recommendationsList.innerHTML = recommendations.map(rec => `
+                    <div class="recommendation-card ${rec.action.toLowerCase()}">
+                        <div class="recommendation-header">
+                            <span class="ticker">${rec.stock}</span>
+                            <span class="action ${rec.action.toLowerCase()}">${rec.action}</span>
+                        </div>
+                        <div class="recommendation-details">
+                            <strong>Confidence:</strong> ${rec.confidence}%<br>
+                            <strong>Reason:</strong> ${rec.reason}<br>
+                            <strong>Total Volume:</strong> $${rec.volume.toLocaleString()}<br>
+                            <strong>Politicians:</strong> ${rec.politicians.join(', ')}
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            recommendationsSection.style.display = 'block';
+            showMessage(`Generated ${recommendations.length} trading recommendations!`);
+        }
+
+        function exportData() {
+            if (recommendations.length === 0) {
+                showMessage('No recommendations to export. Generate recommendations first!', 'error');
+                return;
+            }
+
+            // Create CSV content
+            const headers = ['Stock', 'Action', 'Confidence', 'Reason', 'Volume'];
+            const csvContent = [
+                headers.join(','),
+                ...recommendations.map(rec => 
+                    [rec.stock, rec.action, rec.confidence, `"${rec.reason}"`, rec.volume].join(',')
+                )
+            ].join('\n');
+
+            // Create download link
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `trading_recommendations_${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+
+            showMessage('Data exported successfully!');
+        }
+
+        // Initialize with sample data on load
+        window.onload = function() {
+            setTimeout(() => {
+                analyzeData();
+            }, 500);
+        };
+    </script>
+</body>
+</html>
